@@ -5,27 +5,39 @@ require('dotenv').config();
 
 const app = express();
 
-// 1. Request Logging Middleware (Great for Render logs)
+// 1. Request Logging Middleware
 app.use((req, res, next) => {
     console.log(`${req.method} request made to: ${req.url}`);
     next();
 });
 
-// 2. Optimized CORS (Crucial for connecting Frontend to Backend)
+// 2. Optimized CORS (Updated with your actual Vercel URLs)
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://facial-recognition-attendance-syste-one.vercel.app", // Your specific alias
+    "https://facial-recognition-attendance-system-odq8rdhjr.vercel.app" // Your production deployment
+];
+
 app.use(cors({
-    origin: [
-        "http://localhost:5173", // For your local development
-        "https://your-frontend-name.vercel.app" // Add your future Vercel URL here
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Added OPTIONS
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"] // Explicitly allow these
 }));
 
-// 3. Payload Limits (Required for handling large Face Descriptors)
+// 3. Payload Limits
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 4. Health Check Route (Used by your Frontend's isOnline check)
+// 4. Health Check Route
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'online', timestamp: new Date() });
 });
@@ -42,7 +54,7 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch(err => console.log("❌ DB Connection Error:", err));
 
-// This tells Render to listen on their assigned port and the '0.0.0.0' address
+// Port configuration for Render
 const PORT = process.env.PORT || 10000; 
 
 app.listen(PORT, '0.0.0.0', () => {
